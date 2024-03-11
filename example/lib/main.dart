@@ -23,7 +23,7 @@ class _MyAppState extends State<MyApp> {
     if (image != null) {
       var bytes = await image.readAsBytes();
       File rotatedImage =
-          await FlutterExifRotation.rotateImageBytes(imageBytes: bytes, save: true);
+          await FlutterExifRotation.rotateImageBytesAndSave(imageBytes: bytes);
 
       setState(() {
         _image = rotatedImage;

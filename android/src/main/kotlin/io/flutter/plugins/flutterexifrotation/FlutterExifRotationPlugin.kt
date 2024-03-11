@@ -87,12 +87,10 @@ class FlutterExifRotationPlugin : FlutterPlugin, MethodCallHandler {
                 ExifInterface.ORIENTATION_NORMAL -> bitmap
                 else -> bitmap
             }
-            var resultPath = ""
             if (save) {
                 if (photoPath != null) {
                     val file =
                         File(photoPath) // the File to save , append increasing numeric counter to prevent files from getting overwritten.
-                    resultPath = file.path
                     val fOut = FileOutputStream(file)
                     rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, fOut)
                     fOut.flush() // Not really required
@@ -103,6 +101,7 @@ class FlutterExifRotationPlugin : FlutterPlugin, MethodCallHandler {
                         file.name,
                         file.name
                     )
+                    result.success(file.path)
                 } else {
                     val name = "${System.currentTimeMillis()}.jpg"
                     val os = ByteArrayOutputStream()
@@ -110,17 +109,24 @@ class FlutterExifRotationPlugin : FlutterPlugin, MethodCallHandler {
                     val jpegBytes = os.toByteArray()
                     os.flush()
                     os.close()
-                    resultPath = MediaStore.Images.Media.insertImage(
+                    val resultPath = MediaStore.Images.Media.insertImage(
                         applicationContext?.contentResolver,
                         BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size),
                         name,
                         name
                     )
+                    result.success(resultPath)
                 }
+            } else {
+                val os = ByteArrayOutputStream()
+                rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, os)
+                val jpegBytes = os.toByteArray()
+                os.flush()
+                os.close()
+                result.success(jpegBytes)
             }
-            result.success(resultPath)
         } catch (e: IOException) {
-            result.error("error", "IOexception", null)
+            result.error("error", "IOException", null)
             e.printStackTrace()
         }
     }
