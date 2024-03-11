@@ -22,20 +22,19 @@ class _MyAppState extends State<MyApp> {
     final image = await picker.getImage(source: ImageSource.gallery);
     if (image != null) {
       var bytes = await image.readAsBytes();
-      File rotatedImage =
-          await FlutterExifRotation.rotateImageBytesAndSave(imageBytes: bytes);
+      var rotatedBytes =
+          await FlutterExifRotation.rotateImageBytes(imageBytes: bytes);
 
-      setState(() {
-        _image = rotatedImage;
-      });
+      print("rotatedBytes: ${rotatedBytes.length}");
     }
   }
 
   Future getImageAndSave() async {
     final image = await picker.getImage(source: ImageSource.gallery);
     if (image != null) {
-      File rotatedImage =
-          await FlutterExifRotation.rotateAndSaveImage(path: image.path);
+      File rotatedImage = await FlutterExifRotation.rotateImageBytesAndSave(
+          imageBytes: await image.readAsBytes());
+      print("rotatedImage: ${rotatedImage.path}");
 
       setState(() {
         _image = rotatedImage;

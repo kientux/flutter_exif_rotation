@@ -29,6 +29,28 @@ public class SwiftFlutterExifRotationPlugin: NSObject, FlutterPlugin {
             } else {
                 result(imagePath)
             }
+        } else if (call.method == "rotateImageBytes") {
+            guard let args = call.arguments else {
+                result("iOS could not recognize flutter arguments in method: (sendParams)")
+                return
+            }
+            let imageBytes = ((args as AnyObject)["imageBytes"]! as? FlutterStandardTypedData)!.data
+            let save = ((args as AnyObject)["save"]! as? Bool) ?? false
+            let image = UIImage(data: imageBytes)
+            
+            if let updatedImage = image?.updateImageOrientationUpSide() {
+                if save {
+                    let fileManager = FileManager.default
+                    let file_name = "\(Date().timeIntervalSince1970).jpg"
+                    let paths = (NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] as NSString).appendingPathComponent(file_name)
+                    let imageData = updatedImage.jpegData(compressionQuality: 0.8); fileManager.createFile(atPath: paths as String, contents: imageData, attributes: nil)
+                    result(paths as String)
+                } else {
+                    result(updatedImage.pngData())
+                }
+            } else {
+                result(imageBytes)
+            }
         }
     }
 }
