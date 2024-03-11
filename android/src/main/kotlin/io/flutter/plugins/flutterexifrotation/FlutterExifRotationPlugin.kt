@@ -119,11 +119,11 @@ class FlutterExifRotationPlugin : FlutterPlugin, MethodCallHandler {
                 }
             } else {
                 val os = ByteArrayOutputStream()
-                rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, os)
-                val jpegBytes = os.toByteArray()
+                rotatedBitmap.compress(Bitmap.CompressFormat.PNG, 100, os)
+                val newBytes = os.toByteArray()
                 os.flush()
                 os.close()
-                result.success(jpegBytes)
+                result.success(newBytes)
             }
         } catch (e: IOException) {
             result.error("error", "IOException", null)
