@@ -10,6 +10,7 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -37,6 +38,11 @@ class FlutterExifRotationPlugin : FlutterPlugin, MethodCallHandler {
                 "rotateImage" -> {
                     launchRotateImage(call, result)
                 }
+
+                "rotateImageBytes" -> {
+                    launchRotateImage(call, result)
+                }
+
                 else -> {
                     result.notImplemented()
                 }
@@ -45,11 +51,16 @@ class FlutterExifRotationPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun launchRotateImage(call: MethodCall, result: MethodChannel.Result) {
-        val photoPath = call.argument<String>("path")
+        val photoPath = call.argument<String?>("path")
+        val imageBytes = call.argument<ByteArray?>("imageBytes")
         val save = argument(call, "save", false)!!
         val orientation: Int
         try {
-            val ei = ExifInterface(photoPath!!)
+            val ei =
+                if (photoPath != null)
+                    ExifInterface(photoPath)
+                else
+                    ExifInterface(imageBytes!!.inputStream())
 
             orientation = ei.getAttributeInt(
                 ExifInterface.TAG_ORIENTATION,
@@ -57,7 +68,18 @@ class FlutterExifRotationPlugin : FlutterPlugin, MethodCallHandler {
             )
             val options = BitmapFactory.Options()
             options.inPreferredConfig = Bitmap.Config.ARGB_8888
-            val bitmap = BitmapFactory.decodeFile(photoPath, options)
+            val bitmap = if (photoPath != null)
+                BitmapFactory.decodeFile(
+                    photoPath,
+                    options
+                )
+            else
+                BitmapFactory.decodeByteArray(
+                    imageBytes,
+                    0,
+                    imageBytes!!.size,
+                    options
+                )
             val rotatedBitmap = when (orientation) {
                 ExifInterface.ORIENTATION_ROTATE_90 -> rotate(bitmap, 90f)
                 ExifInterface.ORIENTATION_ROTATE_180 -> rotate(bitmap, 180f)
@@ -65,21 +87,38 @@ class FlutterExifRotationPlugin : FlutterPlugin, MethodCallHandler {
                 ExifInterface.ORIENTATION_NORMAL -> bitmap
                 else -> bitmap
             }
-            val file =
-                File(photoPath) // the File to save , append increasing numeric counter to prevent files from getting overwritten.
-            val fOut = FileOutputStream(file)
-            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, fOut)
-            fOut.flush() // Not really required
-            fOut.close() // do not forget to close the stream
+            var resultPath = ""
             if (save) {
-                MediaStore.Images.Media.insertImage(
-                    applicationContext?.contentResolver,
-                    file.absolutePath,
-                    file.name,
-                    file.name
-                )
+                if (photoPath != null) {
+                    val file =
+                        File(photoPath) // the File to save , append increasing numeric counter to prevent files from getting overwritten.
+                    resultPath = file.path
+                    val fOut = FileOutputStream(file)
+                    rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, fOut)
+                    fOut.flush() // Not really required
+                    fOut.close() // do not forget to close the stream
+                    MediaStore.Images.Media.insertImage(
+                        applicationContext?.contentResolver,
+                        file.absolutePath,
+                        file.name,
+                        file.name
+                    )
+                } else {
+                    val name = "${System.currentTimeMillis()}.jpg"
+                    val os = ByteArrayOutputStream()
+                    rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, os)
+                    val jpegBytes = os.toByteArray()
+                    os.flush()
+                    os.close()
+                    resultPath = MediaStore.Images.Media.insertImage(
+                        applicationContext?.contentResolver,
+                        BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size),
+                        name,
+                        name
+                    )
+                }
             }
-            result.success(file.path)
+            result.success(resultPath)
         } catch (e: IOException) {
             result.error("error", "IOexception", null)
             e.printStackTrace()

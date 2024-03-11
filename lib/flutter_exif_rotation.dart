@@ -47,4 +47,19 @@ class FlutterExifRotation {
 
     return new File(filePath);
   }
+
+  static Future<File> rotateImageBytes({
+    required Uint8List imageBytes,
+    required bool save,
+  }) async {
+    String filePath = await (_channel.invokeMethod(
+      'rotateImageBytes',
+      <String, dynamic>{
+        'imageBytes': imageBytes,
+        'save': save,
+      },
+    ));
+
+    return new File(filePath);
+  }
 }
